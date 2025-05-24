@@ -11,67 +11,74 @@ using BCrypt.Net;
 namespace UserServiceAPI.Controllers;
 
 
-    [ApiController]
-    [Route("users")]
-    public class UsersController : ControllerBase
+[ApiController]
+[Route("users")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserServiceMongo _service;
+    private readonly ILogger<UsersController> _logger;
+    private readonly IUserRepository _repository;
+    private readonly IUserServiceMongo UserServiceMongo;
+
+    public UsersController(IUserServiceMongo service, ILogger<UsersController> logger, IUserRepository repository)
     {
-        private readonly IUserServiceMongo _service;
-        private readonly ILogger<UsersController> _logger;
-        private readonly IUserRepository _repository;
-        private readonly IUserServiceMongo UserServiceMongo;
+        _logger = logger;
+        _service = service;
+        _repository = repository;
+    }
 
-        public UsersController(IUserServiceMongo service, ILogger<UsersController> logger)
+
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateUser(UserCreateRequest request)
+    {
+        _logger.LogInformation("Received request to create user.");
+
+        if (request == null)
         {
-            _logger = logger;
-            _service = service;
+            _logger.LogWarning("CreateUser was called with a null request.");
+            return BadRequest("Request cannot be null.");
         }
 
-        [HttpPost("create")]
-        public async Task<IActionResult> CreateUser(UserCreateRequest request)
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        var user = new User
         {
-            _logger.LogInformation("Received request to create user.");
+            UserId = Guid.NewGuid(),
+            Username = request.Username,
+            EmailAddress = request.EmailAddress,
+            PasswordHash = hashedPassword,
+            Role = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role
+        };
 
-            if (request == null)
-            {
-                _logger.LogWarning("CreateUser was called with a null request.");
-                return BadRequest("Request cannot be null.");
-            }
+        _logger.LogInformation("Creating user in database...");
+        var createdUser = await _service.CreateUser(user);
 
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            var user = new User
-            {
-                UserId = Guid.NewGuid(),
-                Username = request.Username,
-                EmailAddress = request.EmailAddress,
-                PasswordHash = hashedPassword,
-                Role = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role
-            };
-
-            _logger.LogInformation("Creating user in database...");
-            var createdUser = await _service.CreateUser(user);
-
-            if (createdUser == null)
-            {
-                _logger.LogError("Error creating user in database.");
-                return StatusCode(500, "Error creating user.");
-            }
-
-            _logger.LogInformation($"User created successfully with ID: {createdUser.UserId}");
-
-            return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, createdUser);
-        }
-/*
-        [HttpPost("validate")]
-        public async Task<IActionResult> Validate(Login login)
+        if (createdUser == null)
         {
-            var result = await _service.ValidateLogin(login);
-            if (result == null)
-                return Unauthorized();
-
-            return Ok(result);
-            */
+            _logger.LogError("Error creating user in database.");
+            return StatusCode(500, "Error creating user.");
         }
-    
+
+        _logger.LogInformation($"User created successfully with ID: {createdUser.UserId}");
+
+        return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, createdUser);
+    }
+
+    [HttpPost("validate")]
+    public async Task<ActionResult<object>> Login([FromBody] Login login)
+    {
+        var result = await _service.ValidateLogin(login); // Korrekt kald
+
+        if (result == null)
+        {
+            return Unauthorized("Invalid credentials");
+        }
+
+        return Ok(result);
+    }
+
+
+}
+
 
     
