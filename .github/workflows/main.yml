@@ -17,7 +17,7 @@ jobs:
       id-token: write
     env:
       DOCKER_USER: ${{ secrets.DOCKER_USER }}
-      IMAGE_NAME: auction-service
+      IMAGE_NAME: user-service
 
     steps:
       - name: Checkout repository
