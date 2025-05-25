@@ -13,11 +13,25 @@ namespace UserServiceAPI.Services
         public UserServiceMongo(ILogger<UserServiceMongo> logger, IConfiguration configuration)
         {
             _logger = logger;
-            var connectionString = configuration["MongoDb:ConnectionString"];
+
+            // Prøv først at hente connection string fra miljøvariabel
+            var connectionString = Environment.GetEnvironmentVariable("MONGODB_URI");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                // Hvis miljøvariablen ikke findes, brug connection string fra appsettings.json
+                connectionString = configuration["MongoDb:ConnectionString"];
+                _logger.LogInformation("Using MongoDB connection string from appsettings.json");
+            }
+            else
+            {
+                _logger.LogInformation("Using MongoDB connection string from environment variable MONGODB_URI");
+            }
+
             var databaseName = configuration["MongoDb:Database"];
             var collectionName = configuration["MongoDb:Collection"];
 
-            _logger.LogInformation($"Connected to MongoDB using: {connectionString}");
+            _logger.LogInformation($"MongoDB Connection String: {connectionString}");
             _logger.LogInformation($"Using database: {databaseName}");
             _logger.LogInformation($"Using collection: {collectionName}");
 
