@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyVersion>1.0.1.1</AssemblyVersion>
-    <FileVersion>1.0.1.1.1</FileVersion>
+    <FileVersion>1.0.1.1</FileVersion>
     <InformationalVersion>1.0.0</InformationalVersion>
     <Description>User Service API for managing user accounts and authentication</Description>
   </PropertyGroup>
