@@ -8,11 +8,10 @@ namespace UserServiceAPI.Models
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public ObjectId Id { get; set; }  // MongoDB’s unikke nøgle, kan være automatisk genereret
+        public ObjectId Id { get; set; }
 
         [BsonElement("userid")]
-        [BsonRepresentation(BsonType.String)]
-        public Guid UserId { get; set; }  // Dit “bruger-id” som et separat felt i databasen
+        public string UserId { get; set; } = Guid.NewGuid().ToString();
 
         public string Username { get; set; }
         public string EmailAddress { get; set; }

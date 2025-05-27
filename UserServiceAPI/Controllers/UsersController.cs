@@ -38,7 +38,10 @@ public class UsersController : ControllerBase
         }
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-        var userId = request.UserId == Guid.Empty ? Guid.NewGuid() : request.UserId;
+
+        // ✅ Guid.TryParse til at validere UserId-strengen
+        var isValidGuid = Guid.TryParse(request.UserId, out Guid parsedUserId);
+        var userId = (!isValidGuid || parsedUserId == Guid.Empty) ? Guid.NewGuid() : parsedUserId;
 
         var user = new User
         {
