@@ -6,10 +6,17 @@ using UserServiceAPI.Models;
 
 namespace UserServiceAPI.Repository
 {
+    /// <summary>
+    /// Repository-klassen til håndtering af brugerdata i MongoDB.
+    /// </summary>
     public class UserRepository : IUserRepository
     {
         private readonly IMongoCollection<User> _users;
 
+        /// <summary>
+        /// Initialiserer en ny instans af UserRepository og konfigurerer MongoDB-forbindelsen.
+        /// </summary>
+        /// <param name="config">Konfigurationsobjekt, der indeholder MongoDB-indstillinger.</param>
         public UserRepository(IConfiguration config)
         {
             var connectionString = config["MongoDb:ConnectionString"];
@@ -21,16 +28,15 @@ namespace UserServiceAPI.Repository
             _users = database.GetCollection<User>(collectionName);
         }
 
+        /// <summary>
+        /// Opretter en ny bruger i MongoDB-databasen.
+        /// </summary>
+        /// <param name="user">Brugerobjektet, der skal indsættes.</param>
+        /// <returns>Returnerer den oprettede bruger.</returns>
         public async Task<User> CreateUser(User user)
         {
             await _users.InsertOneAsync(user);
             return user;
         }
-        public async Task<User?> GetUserByUsernameAsync(string username)
-        {
-            var filter = Builders<User>.Filter.Eq(u => u.Username, username);
-            return await _users.Find(filter).FirstOrDefaultAsync();
-        }
-        
     }
 }

@@ -1,120 +1,118 @@
 using MongoDB.Driver;
-using UserServiceAPI.Services;
 using UserServiceAPI.Models;
 using UserServiceAPI.Repository;
 
-namespace UserServiceAPI.Services
+namespace UserServiceAPI.Services;
+
+/// <summary>
+/// Tjenesteklasse til håndtering af forretningslogik relateret til brugere, 
+/// herunder oprettelse og validering, med MongoDB som datalager.
+/// </summary>
+public class UserServiceMongo : IUserServiceMongo
 {
-    public class UserServiceMongo : IUserServiceMongo
+    private readonly IUserRepository _repository;
+    private readonly ILogger<UserServiceMongo> _logger;
+    private readonly IMongoCollection<User> _userCollection;
+
+    /// <summary>
+    /// Initialiserer en ny instans af <see cref="UserServiceMongo"/> og opsætter forbindelse til MongoDB.
+    /// </summary>
+    /// <param name="repository">Brugerrepository til databaseoperationer.</param>
+    /// <param name="logger">Logger til at logge informationer og fejl.</param>
+    /// <param name="configuration">Konfiguration der indeholder MongoDB-indstillinger.</param>
+    public UserServiceMongo(IUserRepository repository, ILogger<UserServiceMongo> logger, IConfiguration configuration)
     {
-        private readonly IMongoCollection<User> _userCollection;
-        private readonly ILogger<UserServiceMongo> _logger;
+        _repository = repository;
+        _logger = logger;
 
-        public UserServiceMongo(ILogger<UserServiceMongo> logger, IConfiguration configuration)
+        // Henter forbindelsesstrengen fra miljøvariabel eller appsettings
+        var connectionString = Environment.GetEnvironmentVariable("MONGODB_URI") 
+                               ?? configuration["MongoDb:ConnectionString"];
+
+        var databaseName = configuration["MongoDb:Database"];
+        var collectionName = configuration["MongoDb:Collection"];
+
+        var client = new MongoClient(connectionString);
+        var database = client.GetDatabase(databaseName);
+        _userCollection = database.GetCollection<User>(collectionName);
+    }
+
+    /// <summary>
+    /// Opretter en ny bruger og gemmer denne i databasen.
+    /// </summary>
+    /// <param name="user">Brugerobjektet der skal oprettes.</param>
+    /// <returns>Returnerer den oprettede bruger.</returns>
+    /// <exception cref="ArgumentNullException">Kastes hvis brugerobjektet er null.</exception>
+    /// <exception cref="Exception">Kastes hvis der opstår fejl under databaseoperationen.</exception>
+    public async Task<User> CreateUser(User user)
+    {
+        if (user == null)
         {
-            _logger = logger;
-
-            // Prøv først at hente connection string fra miljøvariabel
-            var connectionString = Environment.GetEnvironmentVariable("MONGODB_URI");
-
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                // Hvis miljøvariablen ikke findes, brug connection string fra appsettings.json
-                connectionString = configuration["MongoDb:ConnectionString"];
-                _logger.LogInformation("Using MongoDB connection string from appsettings.json");
-            }
-            else
-            {
-                _logger.LogInformation("Using MongoDB connection string from environment variable MONGODB_URI");
-            }
-
-            var databaseName = configuration["MongoDb:Database"];
-            var collectionName = configuration["MongoDb:Collection"];
-
-            _logger.LogInformation($"MongoDB Connection String: {connectionString}");
-            _logger.LogInformation($"Using database: {databaseName}");
-            _logger.LogInformation($"Using collection: {collectionName}");
-
-            try
-            {
-                var client = new MongoClient(connectionString);
-                var database = client.GetDatabase(databaseName);
-                _userCollection = database.GetCollection<User>(collectionName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Failed to connect to MongoDB: {0}", ex.Message);
-                throw;
-            }
+            _logger.LogError("CreateUser blev kaldt med null som parameter.");
+            throw new ArgumentNullException(nameof(user));
         }
 
+        _logger.LogInformation($"Opretter bruger med ID: {user.UserId}");
 
-        public async Task<User> CreateUser(User user)
+        try
         {
-            if (user == null)
-            {
-                _logger.LogError("CreateUser was called with null user.");
-                throw new ArgumentNullException(nameof(user));
-            }
+            var createdUser = await _repository.CreateUser(user);
+            _logger.LogInformation($"Bruger {createdUser.UserId} blev oprettet korrekt.");
+            return createdUser;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Fejl ved oprettelse af bruger {user.UserId}: {ex.Message}");
+            throw;
+        }
+    }
 
-            user.UserId = Guid.NewGuid(); // Generér unik ID
-            _logger.LogInformation($"Assigning new ID to user: {user.UserId}");
-
-            try
-            {
-                _logger.LogInformation($"Inserting user {user.UserId} into MongoDB...");
-                await _userCollection.InsertOneAsync(user);
-                _logger.LogInformation($"User {user.UserId} successfully inserted into MongoDB.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error inserting user {user.UserId} into MongoDB: {ex.Message}");
-                throw;
-            }
-
-            return user;
+    /// <summary>
+    /// Validerer en brugers loginoplysninger ved at tjekke brugernavn og adgangskode.
+    /// </summary>
+    /// <param name="login">Login-objekt indeholdende brugernavn og adgangskode.</param>
+    /// <returns>
+    /// Et anonymt objekt med brugerens ID, brugernavn, e-mail og rolle, 
+    /// hvis login er succesfuldt. Returnerer null, hvis login fejler.
+    /// </returns>
+    public async Task<object?> ValidateLogin(Login login)
+    {
+        if (login == null || string.IsNullOrEmpty(login.Username) || string.IsNullOrEmpty(login.Password))
+        {
+            _logger.LogWarning("Login-request er ugyldig: manglende brugernavn eller adgangskode.");
+            return null;
         }
 
-        public async Task<object?> ValidateLogin(Login login)
+        var filter = Builders<User>.Filter.Eq(u => u.Username, login.Username);
+        var user = await _userCollection.Find(filter).FirstOrDefaultAsync();
+
+        if (user == null)
         {
-            if (login == null || string.IsNullOrEmpty(login.Username) || string.IsNullOrEmpty(login.Password))
-            {
-                _logger.LogWarning("Login request is invalid: missing username or password.");
-                return null;
-            }
-
-            var filter = Builders<User>.Filter.Eq(u => u.Username, login.Username);
-            var user = await _userCollection.Find(filter).FirstOrDefaultAsync();
-
-            if (user == null)
-            {
-                _logger.LogWarning($"User not found: {login.Username}");
-                return null;
-            }
-
-            if (string.IsNullOrEmpty(user.PasswordHash))
-            {
-                _logger.LogWarning($"Password hash is null or empty for user: {login.Username}");
-                return null;
-            }
-
-            bool isValid = BCrypt.Net.BCrypt.Verify(login.Password, user.PasswordHash);
-            if (!isValid)
-            {
-                _logger.LogWarning($"Invalid password for user: {login.Username}");
-                return null;
-            }
-
-            _logger.LogInformation($"User {login.Username} successfully validated.");
-
-            // Return kun de nødvendige info – aldrig hele user-objektet med password hash
-            return new
-            {
-                user.UserId,
-                user.Username,
-                user.EmailAddress,
-                user.Role
-            };
+            _logger.LogWarning($"Bruger ikke fundet: {login.Username}");
+            return null;
         }
+
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            _logger.LogWarning($"Adgangskode-hash mangler for bruger: {login.Username}");
+            return null;
+        }
+
+        bool isValid = BCrypt.Net.BCrypt.Verify(login.Password, user.PasswordHash);
+        if (!isValid)
+        {
+            _logger.LogWarning($"Ugyldig adgangskode for bruger: {login.Username}");
+            return null;
+        }
+
+        _logger.LogInformation($"Bruger {login.Username} er blevet valideret korrekt.");
+
+        return new
+        {
+            user.UserId,
+            user.Username,
+            user.EmailAddress,
+            user.Role
+        };
     }
 }

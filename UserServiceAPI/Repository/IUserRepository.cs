@@ -9,5 +9,4 @@ namespace UserServiceAPI.Repository;
 public interface IUserRepository
 {
     Task<User> CreateUser(User user);
-    Task<User?> GetUserByUsernameAsync(string username);
 }

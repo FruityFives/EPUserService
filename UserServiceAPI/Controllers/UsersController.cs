@@ -1,15 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using UserServiceAPI.Models;
 using UserServiceAPI.Services;
-using System;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using UserServiceAPI.Repository;
-using BCrypt.Net;
-
 
 namespace UserServiceAPI.Controllers;
-
 
 [ApiController]
 [Route("users")]
@@ -17,17 +10,22 @@ public class UsersController : ControllerBase
 {
     private readonly IUserServiceMongo _service;
     private readonly ILogger<UsersController> _logger;
-    private readonly IUserRepository _repository;
-    private readonly IUserServiceMongo UserServiceMongo;
 
-    public UsersController(IUserServiceMongo service, ILogger<UsersController> logger, IUserRepository repository)
+    public UsersController(IUserServiceMongo service, ILogger<UsersController> logger)
     {
-        _logger = logger;
         _service = service;
-        _repository = repository;
+        _logger = logger;
     }
 
-
+    /// <summary>
+    /// Opretter en ny bruger i systemet.
+    /// </summary>
+    /// <param name="request">Objekt med oplysninger om brugeren, som skal oprettes.</param>
+    /// <returns>
+    /// Returnerer en 201 Created med den oprettede bruger, hvis det lykkes.
+    /// Returnerer 400 Bad Request, hvis anmodningen er ugyldig.
+    /// Returnerer 500 Internal Server Error, hvis der opstår en fejl under oprettelsen.
+    /// </returns>
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser(UserCreateRequest request)
     {
@@ -40,17 +38,17 @@ public class UsersController : ControllerBase
         }
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var userId = request.UserId == Guid.Empty ? Guid.NewGuid() : request.UserId;
 
         var user = new User
         {
-            UserId = Guid.NewGuid(),
+            UserId = userId,
             Username = request.Username,
             EmailAddress = request.EmailAddress,
             PasswordHash = hashedPassword,
             Role = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role
         };
 
-        _logger.LogInformation("Creating user in database...");
         var createdUser = await _service.CreateUser(user);
 
         if (createdUser == null)
@@ -61,14 +59,27 @@ public class UsersController : ControllerBase
 
         _logger.LogInformation($"User created successfully with ID: {createdUser.UserId}");
 
-        return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, createdUser);
+        return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, new
+        {
+            createdUser.UserId,
+            createdUser.Username,
+            createdUser.EmailAddress,
+            createdUser.Role
+        });
     }
 
+    /// <summary>
+    /// Validerer brugerens login-oplysninger.
+    /// </summary>
+    /// <param name="login">Login-objekt med brugernavn og adgangskode.</param>
+    /// <returns>
+    /// Returnerer 200 OK med brugeroplysninger, hvis login er gyldigt.
+    /// Returnerer 401 Unauthorized, hvis loginoplysningerne er ugyldige.
+    /// </returns>
     [HttpPost("validate")]
     public async Task<ActionResult<object>> Login([FromBody] Login login)
     {
-        var result = await _service.ValidateLogin(login); // Korrekt kald
-
+        var result = await _service.ValidateLogin(login);
         if (result == null)
         {
             return Unauthorized("Invalid credentials");
@@ -76,9 +87,4 @@ public class UsersController : ControllerBase
 
         return Ok(result);
     }
-
-
 }
-
-
-    
