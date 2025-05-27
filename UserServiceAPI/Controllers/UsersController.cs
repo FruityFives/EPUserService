@@ -70,24 +70,4 @@ public class UsersController : ControllerBase
             createdUser.Role
         });
     }
-
-    /// <summary>
-    /// Validerer brugerens login-oplysninger.
-    /// </summary>
-    /// <param name="login">Login-objekt med brugernavn og adgangskode.</param>
-    /// <returns>
-    /// Returnerer 200 OK med brugeroplysninger, hvis login er gyldigt.
-    /// Returnerer 401 Unauthorized, hvis loginoplysningerne er ugyldige.
-    /// </returns>
-    [HttpPost("validate")]
-    public async Task<ActionResult<object>> Login([FromBody] Login login)
-    {
-        var result = await _service.ValidateLogin(login);
-        if (result == null)
-        {
-            return Unauthorized("Invalid credentials");
-        }
-
-        return Ok(result);
-    }
 }

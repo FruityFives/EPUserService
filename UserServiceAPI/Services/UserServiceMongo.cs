@@ -66,53 +66,5 @@ public class UserServiceMongo : IUserServiceMongo
             throw;
         }
     }
-
-    /// <summary>
-    /// Validerer en brugers loginoplysninger ved at tjekke brugernavn og adgangskode.
-    /// </summary>
-    /// <param name="login">Login-objekt indeholdende brugernavn og adgangskode.</param>
-    /// <returns>
-    /// Et anonymt objekt med brugerens ID, brugernavn, e-mail og rolle, 
-    /// hvis login er succesfuldt. Returnerer null, hvis login fejler.
-    /// </returns>
-    public async Task<object?> ValidateLogin(Login login)
-    {
-        if (login == null || string.IsNullOrEmpty(login.Username) || string.IsNullOrEmpty(login.Password))
-        {
-            _logger.LogWarning("Login-request er ugyldig: manglende brugernavn eller adgangskode.");
-            return null;
-        }
-
-        var filter = Builders<User>.Filter.Eq(u => u.Username, login.Username);
-        var user = await _userCollection.Find(filter).FirstOrDefaultAsync();
-
-        if (user == null)
-        {
-            _logger.LogWarning($"Bruger ikke fundet: {login.Username}");
-            return null;
-        }
-
-        if (string.IsNullOrEmpty(user.PasswordHash))
-        {
-            _logger.LogWarning($"Adgangskode-hash mangler for bruger: {login.Username}");
-            return null;
-        }
-
-        bool isValid = BCrypt.Net.BCrypt.Verify(login.Password, user.PasswordHash);
-        if (!isValid)
-        {
-            _logger.LogWarning($"Ugyldig adgangskode for bruger: {login.Username}");
-            return null;
-        }
-
-        _logger.LogInformation($"Bruger {login.Username} er blevet valideret korrekt.");
-
-        return new
-        {
-            user.UserId,
-            user.Username,
-            user.EmailAddress,
-            user.Role
-        };
     }
-}
+
