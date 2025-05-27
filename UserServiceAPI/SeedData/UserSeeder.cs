@@ -13,7 +13,7 @@ namespace UserServiceAPI.SeedData
                 {
                     Username = "henrik",
                     EmailAddress = "admin@example.com",
-                    Password = "henrik!",
+                    Password = "henrik",
                     Role = "admin"
                 },
                 new UserCreateRequest
