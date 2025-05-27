@@ -7,9 +7,6 @@ namespace UserServiceAPI.Models
     public class UserCreateRequest
     {
         [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public ObjectId Id { get; set; }
-
         [BsonElement("userid")]
         public string UserId { get; set; } = Guid.NewGuid().ToString();
 

@@ -33,7 +33,7 @@ namespace UserServiceAPI.Repository
         /// </summary>
         /// <param name="user">Brugerobjektet, der skal indsættes.</param>
         /// <returns>Returnerer den oprettede bruger.</returns>
-        public async Task<User> CreateUser(User user)
+        public async Task<User> AddUser(User user)
         {
             await _users.InsertOneAsync(user);
             return user;

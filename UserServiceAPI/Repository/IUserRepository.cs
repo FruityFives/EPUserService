@@ -8,5 +8,5 @@ namespace UserServiceAPI.Repository;
 
 public interface IUserRepository
 {
-    Task<User> CreateUser(User user);
+    Task<User> AddUser(User user);
 }

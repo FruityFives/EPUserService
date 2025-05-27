@@ -32,42 +32,42 @@ public class UsersController : ControllerBase
         _logger.LogInformation("Received request to create user.");
 
         if (request == null)
-        {
-            _logger.LogWarning("CreateUser was called with a null request.");
             return BadRequest("Request cannot be null.");
+
+        try
+        {
+            var createdUser = await _service.CreateUserFromRequest(request);
+
+            return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, new
+            {
+                createdUser.UserId,
+                createdUser.Username,
+                createdUser.EmailAddress,
+                createdUser.Role
+            });
         }
-
-        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-        // ✅ Guid.TryParse til at validere UserId-strengen
-        var isValidGuid = Guid.TryParse(request.UserId, out Guid parsedUserId);
-        var userId = (!isValidGuid || parsedUserId == Guid.Empty) ? Guid.NewGuid() : parsedUserId;
-
-        var user = new User
+        catch (ArgumentNullException ex)
         {
-            UserId = userId,
-            Username = request.Username,
-            EmailAddress = request.EmailAddress,
-            PasswordHash = hashedPassword,
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "user" : request.Role
-        };
-
-        var createdUser = await _service.CreateUser(user);
-
-        if (createdUser == null)
-        {
-            _logger.LogError("Error creating user in database.");
-            return StatusCode(500, "Error creating user.");
+            _logger.LogWarning(ex, "Invalid request.");
+            return BadRequest(ex.Message);
         }
-
-        _logger.LogInformation($"User created successfully with ID: {createdUser.UserId}");
-
-        return CreatedAtAction(nameof(CreateUser), new { userId = createdUser.UserId }, new
+        catch (Exception ex)
         {
-            createdUser.UserId,
-            createdUser.Username,
-            createdUser.EmailAddress,
-            createdUser.Role
-        });
+            _logger.LogError(ex, "Error creating user.");
+            return StatusCode(500, "Internal server error.");
+        }
     }
-}
+    
+        [HttpPost("validate")]
+     public async Task<ActionResult<object>> Login([FromBody] Login login)
+    {
+        var result = await _service.ValidateLogin(login);
+        if (result == null)
+        {
+            return Unauthorized("Invalid credentials");
+        }
+
+        return Ok(result);
+    }
+    }
+

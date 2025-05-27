@@ -8,6 +8,7 @@ namespace UserServiceAPI.Models
     {
         [BsonId]
         [BsonRepresentation(BsonType.String)]
+        [BsonElement("UserId")]
         public Guid UserId { get; set; }
 
         [BsonElement("username")]
