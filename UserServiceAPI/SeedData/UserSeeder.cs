@@ -1,7 +1,7 @@
 using UserServiceAPI.Models;
 using UserServiceAPI.Services;
 
-namespace UserServiceAPI.Seeding
+namespace UserServiceAPI.SeedData
 {
     public static class UserSeeder
     {

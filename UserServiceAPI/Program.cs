@@ -1,8 +1,6 @@
 using UserServiceAPI.Repository;
 using UserServiceAPI.Services;
-using UserServiceAPI.Seeding;
-using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
+using UserServiceAPI.SeedData;
 
 var builder = WebApplication.CreateBuilder(args);
 
