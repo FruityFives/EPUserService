@@ -5,7 +5,7 @@ using UserServiceAPI.Services;
 namespace UserServiceAPI.Controllers;
 
 [ApiController]
-[Route("users")]
+[Route("api/users")]
 public class UsersController : ControllerBase
 {
     private readonly IUserServiceMongo _service;
